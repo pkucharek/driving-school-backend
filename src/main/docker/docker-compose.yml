@@ -1,0 +1,33 @@
+version: '2'
+
+services:
+  app:
+    image: 'driving-school-backend:latest'
+    build:
+      context: .
+    container_name: app
+    depends_on:
+      - event-store
+      - read-model-db
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/postgres
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=changeme
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+    ports:
+      - "8080:8080"
+
+  event-store:
+    image: 'cassandra:4.0.4'
+    container_name: event-store
+    ports:
+      - "9842:9842"
+
+  read-model-db:
+    image: 'postgres:13.1-alpine'
+    container_name: read-model-db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=changeme
+    ports:
+      - "5432:5432"
