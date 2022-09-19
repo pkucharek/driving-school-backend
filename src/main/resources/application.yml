@@ -1,0 +1,18 @@
+spring:
+  mail:
+#    host: set via VM argument -Dspring.mail.host
+    port: 587
+#    username: set via VM argument -Dspring.mail.username
+#    password: set via VM argument -Dspring.mail.password
+    properties:
+      mail:
+        transport:
+          protocol: smtp
+        debug: true
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+
+frontend-application-base-path: "http://localhost:3000"
