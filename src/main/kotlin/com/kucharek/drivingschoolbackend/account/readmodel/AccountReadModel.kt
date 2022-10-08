@@ -1,9 +1,9 @@
 package com.kucharek.drivingschoolbackend.account.readmodel
 
-import java.util.*
+import com.kucharek.drivingschoolbackend.account.AccountId
 
 class AccountReadModel(
-    val id: UUID,
+    val id: AccountId,
     val firstName: String,
     val lastName: String,
     val nationalIdNumber: String,

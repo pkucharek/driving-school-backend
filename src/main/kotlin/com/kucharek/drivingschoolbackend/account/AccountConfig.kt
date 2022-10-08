@@ -1,6 +1,8 @@
 package com.kucharek.drivingschoolbackend.account
 
 import com.kucharek.drivingschoolbackend.account.activation.*
+import com.kucharek.drivingschoolbackend.account.activation.readmodel.ActivationLinkQueryInMemoryRepository
+import com.kucharek.drivingschoolbackend.account.activation.readmodel.ActivationLinkQueryRepository
 import com.kucharek.drivingschoolbackend.account.adapter.ConsoleEmailSender
 import com.kucharek.drivingschoolbackend.account.adapter.JavaMailEmailSender
 import com.kucharek.drivingschoolbackend.account.port.EmailSenderPort
@@ -17,7 +19,7 @@ class AccountConfig {
     fun accountService(
         activationLinkService: ActivationLinkService
             = activationLinkService(),
-        eventStore: EventStore<Account, AccountEvent>
+        eventStore: EventStore<AccountId, AccountEvent>
             = accountEventStore(),
         accountQueryRepository: AccountQueryRepository
             = accountQueryRepository(),
@@ -32,7 +34,7 @@ class AccountConfig {
 
     @Bean
     fun activationLinkService(
-        eventStore: EventStore<ActivationLink, ActivationLinkEvent>
+        eventStore: EventStore<ActivationLinkId, ActivationLinkEvent>
             = activationLinkEventStore(),
         activationLinkQueryRepository: ActivationLinkQueryRepository
             = activationLinkQueryRepository(),
@@ -52,10 +54,10 @@ class AccountConfig {
     ) = JavaMailEmailSender(javaMailSender)
 
     @Bean
-    fun accountEventStore() = EventStore<Account, AccountEvent>()
+    fun accountEventStore() = EventStore<AccountId, AccountEvent>()
 
     @Bean
-    fun activationLinkEventStore() = EventStore<ActivationLink, ActivationLinkEvent>()
+    fun activationLinkEventStore() = EventStore<ActivationLinkId, ActivationLinkEvent>()
 
     @Bean
     fun accountQueryRepository() = AccountQueryInMemoryRepository()

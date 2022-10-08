@@ -1,26 +1,24 @@
 package com.kucharek.drivingschoolbackend.event
 
-import arrow.core.Option
+import arrow.core.Either
 import java.util.*
 
-class EventStore<
-    T : Aggregate<out DomainCommand, out DomainCommandError, out DomainEvent>,
-    E : DomainEvent
-> {
-    private var events: Map<UUID, List<E>> = mapOf()
+class EventStore<AggregateID, E : DomainEvent<AggregateID>> {
+    private var events: Map<AggregateID, List<E>> = mapOf()
+
+    fun saveEvent(domainEvent: E) = saveEvents(listOf(domainEvent))
 
     fun saveEvents(domainEvents: List<E>) {
         domainEvents.forEach {
-            val previousEvents: List<E> = events[it.eventMetaData.aggregateID] ?: listOf()
+            val previousEvents: List<E> = events[it.metaData.aggregateID] ?: listOf()
             events = events + Pair(
-                it.eventMetaData.aggregateID,
+                it.metaData.aggregateID,
                 previousEvents + domainEvents
             )
         }
     }
 
-    fun buildAggregate(id: UUID): Option<T> {
-        val list = events[id]
-
-    }
+    fun loadEvents(id: AggregateID): Either<DomainCommandError, List<E>> =
+        if (events[id] != null) Either.Right(events[id]!!)
+        else Either.Left(AggregateDoesNotExist)
 }

@@ -2,25 +2,24 @@ package com.kucharek.drivingschoolbackend.event
 
 import arrow.core.Either
 import com.kucharek.drivingschoolbackend.course.CourseEvent
-import java.util.*
 
 abstract class Aggregate<
+    AggregateId,
     Command: DomainCommand,
     CommandError: DomainCommandError,
-    Event : DomainEvent
+    Event : DomainEvent<AggregateId>
 > {
-    lateinit var id: UUID
     var domainEvents: List<CourseEvent> = listOf()
 
     abstract fun handle(command: Command): Either<CommandError, Event>
-    abstract fun apply(event: Event): Aggregate<Command, CommandError, Event>
+    abstract fun applyEvent(event: Event): Aggregate<AggregateId, Command, CommandError, Event>
 
-    fun buildFrom(events: List<Event>): Aggregate<Command, CommandError, Event> {
+    fun buildFrom(events: List<Event>): Aggregate<AggregateId, Command, CommandError, Event> {
         return events.fold(this) {
-            aggregate: Aggregate<Command, CommandError, Event>,
+            aggregate: Aggregate<AggregateId, Command, CommandError, Event>,
             event: Event
         ->
-            aggregate.apply(event)
+            aggregate.applyEvent(event)
         }
     }
 }

@@ -1,61 +1,56 @@
 package com.kucharek.drivingschoolbackend.account.activation
 
+import arrow.core.Either
+import com.kucharek.drivingschoolbackend.account.AccountId
 import com.kucharek.drivingschoolbackend.event.Aggregate
-import com.kucharek.drivingschoolbackend.event.DomainEvent
 import com.kucharek.drivingschoolbackend.event.EventMetaData
 import java.time.Instant
-import java.util.UUID
+import java.util.*
+import kotlin.properties.Delegates
 
-class ActivationLink private constructor() : Aggregate<ActivationLinkEvent> {
-    var domainEvents: List<ActivationLinkEvent> = listOf()
-    override lateinit var id: UUID
-    private lateinit var userId: UUID
+
+data class ActivationKey(
+    val value: String,
+)
+
+data class ActivationLinkId(val uuid: UUID)
+
+class ActivationLink : Aggregate<ActivationLinkId, ActivationLinkCommand, ActivationLinkError, ActivationLinkEvent>() {
+    lateinit var id: ActivationLinkId
+        private set
+    private lateinit var userId: AccountId
     private lateinit var expirationDate: Instant
     private lateinit var activationKey: ActivationKey
-    private var isConsumed = false
+    private var isConsumed by Delegates.notNull<Boolean>()
 
-    companion object {
-        fun create(
-            userId: UUID,
-            expirationDate: Instant,
-            activationKey: ActivationKey
-        ): ActivationLink {
-            val activationLinkId = UUID.randomUUID()
-            return buildFrom(listOf(ActivationLinkCreated(
-                EventMetaData(activationLinkId, UUID.randomUUID(), Instant.now()),
-                userId, expirationDate, activationKey, isConsumed = false
-            )))
-        }
-
-        fun buildFrom(events: List<ActivationLinkEvent>): ActivationLink {
-            return events.fold(ActivationLink()) { account: ActivationLink, event: ActivationLinkEvent ->
-                when (event) {
-                    is ActivationLinkCreated -> account.applyActivationLinkCreated(event)
-                }
-            }
+    override fun applyEvent(event: ActivationLinkEvent): ActivationLink {
+        return when (event) {
+            is ActivationLinkCreated -> applyActivationLinkCreated(event)
         }
     }
 
     private fun applyActivationLinkCreated(event: ActivationLinkCreated): ActivationLink {
-        id = event.eventMetaData.aggregateID
+        id = event.metaData.aggregateID
         userId = event.userId
         expirationDate = event.expirationDate
         activationKey = event.activationKey
         isConsumed = event.isConsumed
         return this
     }
+
+    override fun handle(command: ActivationLinkCommand): Either<ActivationLinkError, ActivationLinkEvent> {
+        return when (command) {
+            is CreateActivationLink -> handleCreateActivationLink(command)
+        }
+    }
+
+    private fun handleCreateActivationLink(command: CreateActivationLink): Either<ActivationLinkError, ActivationLinkEvent> {
+        return Either.Right(ActivationLinkCreated(
+            metaData = EventMetaData(aggregateID = ActivationLinkId(UUID.randomUUID())),
+            userId = command.accountId,
+            expirationDate = command.expirationDate,
+            activationKey = command.activationKey,
+            isConsumed = false
+        ))
+    }
 }
-
-data class ActivationKey(
-    val value: String,
-)
-
-sealed class ActivationLinkEvent : DomainEvent, java.io.Serializable
-
-data class ActivationLinkCreated(
-    override val eventMetaData: EventMetaData,
-    val userId: UUID,
-    val expirationDate: Instant,
-    val activationKey: ActivationKey,
-    val isConsumed: Boolean
-) : ActivationLinkEvent()

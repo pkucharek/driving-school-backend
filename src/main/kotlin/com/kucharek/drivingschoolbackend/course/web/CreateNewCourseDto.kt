@@ -1,4 +1,6 @@
-package com.kucharek.drivingschoolbackend.course
+package com.kucharek.drivingschoolbackend.course.web
+
+import com.kucharek.drivingschoolbackend.course.CourseCategory
 
 data class CreateNewCourseDto(
     val firstName: String,

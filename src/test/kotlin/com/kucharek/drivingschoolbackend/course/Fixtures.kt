@@ -1,5 +1,6 @@
 package com.kucharek.drivingschoolbackend.course
 
+import com.kucharek.drivingschoolbackend.course.web.CreateNewCourseDto
 import org.apache.commons.lang3.RandomStringUtils
 
 internal fun courseCommand(

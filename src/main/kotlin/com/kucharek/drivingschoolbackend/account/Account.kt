@@ -1,70 +1,68 @@
 package com.kucharek.drivingschoolbackend.account
 
+import arrow.core.Either
 import com.kucharek.drivingschoolbackend.event.Aggregate
-import com.kucharek.drivingschoolbackend.event.DomainCommand
-import com.kucharek.drivingschoolbackend.event.DomainEvent
 import com.kucharek.drivingschoolbackend.event.EventMetaData
-import java.io.Serializable
-import java.time.Instant
-import java.util.UUID
+import java.util.*
+import kotlin.properties.Delegates
 
-class Account private constructor() : Aggregate<AccountEvent> {
-    var domainEvents: List<AccountEvent> = listOf()
-    override lateinit var id: UUID
+data class AccountId(val uuid: UUID)
+
+class Account : Aggregate<AccountId, AccountCommand, AccountError, AccountEvent>() {
+    lateinit var id: AccountId
+        private set
     private lateinit var firstName: String
     private lateinit var lastName: String
     private lateinit var nationalIdNumber: String
     private lateinit var email: String
-    private var isActive = false
+    private var isActive by Delegates.notNull<Boolean>()
 
-    companion object {
-        fun create(
-            firstName: String,
-            lastName: String,
-            nationalIdNumber: String,
-            email: String
-        ): Account {
-            val accountId = UUID.randomUUID()
-            return buildFrom(listOf(AccountCreated(
-                EventMetaData(accountId, UUID.randomUUID(), Instant.now()),
-                firstName, lastName, nationalIdNumber, email
-            )))
-        }
-
-        fun buildFrom(events: List<AccountEvent>): Account {
-            return events.fold(Account()) { account: Account, event: AccountEvent ->
-                when (event) {
-                    is AccountCreated -> account.applyAccountCreated(event)
-                }
-            }
+    override fun applyEvent(event: AccountEvent): Account {
+        return when (event) {
+            is AccountCreated -> applyAccountCreated(event)
+            is AccountActivated -> applyAccountActivated(event)
         }
     }
 
     private fun applyAccountCreated(event: AccountCreated): Account {
-        id = event.eventMetaData.aggregateID
+        id = event.metaData.aggregateID
         firstName = event.firstName
         lastName = event.lastName
         nationalIdNumber = event.nationalIdNumber
         email = event.email
+        isActive = false
         return this
     }
+
+    private fun applyAccountActivated(event: AccountActivated): Account {
+        isActive = true
+        return this
+    }
+
+    override fun handle(command: AccountCommand): Either<AccountError, AccountEvent> {
+        return when (command) {
+            is CreateAccount -> handleCreateCourse(command)
+            is ActivateAccount -> handleActivateAccount(command)
+        }
+    }
+
+    private fun handleCreateCourse(command: CreateAccount): Either<AccountError, AccountEvent> {
+        return Either.Right(AccountCreated(
+            metaData = EventMetaData(aggregateID = AccountId(UUID.randomUUID())),
+            firstName = command.firstName,
+            lastName = command.lastName,
+            nationalIdNumber = command.nationalIdNumber,
+            email = command.email
+        ))
+    }
+
+    private fun handleActivateAccount(command: ActivateAccount): Either<AccountError, AccountEvent> {
+        if (isActive) {
+            return Either.Left(AccountAlreadyActivated)
+        }
+        return Either.Right(AccountActivated(
+            metaData = EventMetaData(aggregateID = id),
+            command.activationTimestamp
+        ))
+    }
 }
-
-sealed class AccountEvent : DomainEvent, Serializable
-
-data class AccountCreated(
-    override val eventMetaData: EventMetaData,
-    val firstName: String,
-    val lastName: String,
-    val nationalIdNumber: String,
-    val email: String,
-) : AccountEvent()
-
-sealed class AccountCommand : DomainCommand, Serializable
-
-data class CreateAccount(
-    val firstName: String,
-    val lastName: String,
-    val nationalIdNumber: String,
-    val email: String,
-): AccountCommand()

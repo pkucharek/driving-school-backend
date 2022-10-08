@@ -1,14 +1,14 @@
 package com.kucharek.drivingschoolbackend.course
 
 import com.kucharek.drivingschoolbackend.BaseTestSystem
+import com.kucharek.drivingschoolbackend.account.AccountAlreadyExists
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.Assertions.assertAll
 import org.junit.jupiter.api.Test
 
 class CreatingCourseTests: BaseTestSystem() {
 
     @Test
-    fun `should create course`() {
+    fun `creates course`() {
         //given
         val createCourseCommand = courseCommand()
 
@@ -16,15 +16,13 @@ class CreatingCourseTests: BaseTestSystem() {
         val courseCreationResult = system.courseService.createCourse(createCourseCommand)
 
         //then
-        assertAll(
-            { assertThat(courseCreationResult.result).isEqualTo(CourseCreationResult.CREATED) },
-            { assertThat(courseCreationResult.id).isNotNull() },
-            { assertThat(courseCreationResult.message).isEmpty() },
-        )
+        courseCreationResult.map { uuid ->
+            assertThat(uuid.toString()).isNotBlank()
+        }
     }
 
     @Test
-    fun `should create account when creating course`() {
+    fun `creates account after creating course`() {
         //given
         val createCourseCommand = courseCommand()
 
@@ -35,7 +33,7 @@ class CreatingCourseTests: BaseTestSystem() {
         val account = system.accountService.getAccountBy {
             it.nationalIdNumber == createCourseCommand.nationalIdNumber
         }
-        assertThat(account.isDefined()).isTrue
+        assertThat(account.isRight()).isTrue
     }
 
     @Test
@@ -48,10 +46,9 @@ class CreatingCourseTests: BaseTestSystem() {
         val createCourseResult = system.courseService.createCourse(createCourseCommand)
 
         //then
-        assertAll(
-            { assertThat(createCourseResult.result).isEqualTo(CourseCreationResult.NOT_CREATED) },
-            { assertThat(createCourseResult.id).isNull() },
-            { assertThat(createCourseResult.message).contains("national ID number") },
+        createCourseResult.fold(
+            { error -> assertThat(error).isInstanceOf(AccountAlreadyExists::class.java) },
+            {}
         )
     }
 
@@ -67,10 +64,9 @@ class CreatingCourseTests: BaseTestSystem() {
         )
 
         //then
-        assertAll(
-            { assertThat(createCourseResult.result).isEqualTo(CourseCreationResult.NOT_CREATED) },
-            { assertThat(createCourseResult.id).isNull() },
-            { assertThat(createCourseResult.message).contains("e-mail") },
+        createCourseResult.fold(
+            { error -> assertThat(error).isInstanceOf(AccountAlreadyExists::class.java) },
+            {}
         )
     }
 }

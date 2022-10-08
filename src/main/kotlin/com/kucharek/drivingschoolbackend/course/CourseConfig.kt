@@ -1,5 +1,6 @@
 package com.kucharek.drivingschoolbackend.course
 
+import com.kucharek.drivingschoolbackend.account.AccountEvent
 import com.kucharek.drivingschoolbackend.account.AccountService
 import com.kucharek.drivingschoolbackend.course.readmodel.CourseQueryInMemoryRepository
 import com.kucharek.drivingschoolbackend.course.readmodel.CourseQueryRepository
@@ -13,20 +14,16 @@ class CourseConfig {
     @Bean
     fun courseService(
         accountService: AccountService,
-        courseCommandResolver: CourseCommandResolver = courseCommandResolver(courseEventStore()),
+        eventStore: EventStore<CourseId, CourseEvent> = courseEventStore(),
         courseQueryRepository: CourseQueryRepository = courseQueryRepository(),
     ) = CourseService(
         accountService,
-        courseCommandResolver,
+        eventStore,
         courseQueryRepository
     )
 
     @Bean
-    fun courseCommandResolver(eventStore: EventStore<Course, CourseEvent>)
-        = CourseCommandResolver(eventStore)
-
-    @Bean
-    fun courseEventStore() = EventStore<Course, CourseEvent>()
+    fun courseEventStore() = EventStore<CourseId, CourseEvent>()
 
     @Bean
     fun courseQueryRepository() = CourseQueryInMemoryRepository()

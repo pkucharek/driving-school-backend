@@ -1,6 +1,7 @@
 package com.kucharek.drivingschoolbackend.event
 
-sealed class DomainCommandError {
+abstract class DomainCommandError(
+    open val message: String
+)
 
-}
-
+object AggregateDoesNotExist : DomainCommandError("Aggregate does not exist")

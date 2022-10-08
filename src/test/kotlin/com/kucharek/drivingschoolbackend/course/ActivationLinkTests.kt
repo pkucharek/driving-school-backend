@@ -1,13 +1,14 @@
 package com.kucharek.drivingschoolbackend.course
 
 import com.kucharek.drivingschoolbackend.BaseTestSystem
+import com.kucharek.drivingschoolbackend.account.AccountAlreadyActivated
 import com.kucharek.drivingschoolbackend.account.activation.ActivationKey
-import com.kucharek.drivingschoolbackend.account.activation.ActivationResult
+import com.kucharek.drivingschoolbackend.account.activation.ActivationLinkDoesNotExist
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
 
-class ActivationLinkTests: BaseTestSystem() {
+class ActivationLinkTests : BaseTestSystem() {
 
     @Test
     fun `creates not consumed activation link after account is created`() {
@@ -18,18 +19,15 @@ class ActivationLinkTests: BaseTestSystem() {
         system.courseService.createCourse(createCourseCommand)
 
         //then
-        val account = system.accountService.getAccountByNationalIdNumber(
+        system.accountService.getAccountByNationalIdNumber(
             createCourseCommand.nationalIdNumber
-        )
-        assertThat(account.isDefined()).isTrue
-
-        val activationLink = system.accountService.getActivationLinkByAccountId(
-            account.orNull()!!.id
-        )
-        assertAll(
-            { assertThat(activationLink.isDefined()).isTrue },
-            { assertThat(activationLink.orNull()!!.isConsumed).isFalse },
-        )
+        ).map { account ->
+            system.accountService.getActivationLinkByAccountId(
+                account.id
+            ).map { link ->
+                assertThat(link.isConsumed).isFalse
+            }
+        }.fold({ error -> throw AssertionError(error) }, {})
     }
 
     @Test
@@ -38,34 +36,39 @@ class ActivationLinkTests: BaseTestSystem() {
         val createCourseCommand = courseCommand()
         system.courseService.createCourse(createCourseCommand)
 
-        val account = system.accountService.getAccountByNationalIdNumber(
+        system.accountService.getAccountByNationalIdNumber(
             createCourseCommand.nationalIdNumber
-        ).orNull()!!
-        val activationLink = system.accountService.getActivationLinkByAccountId(
-            account.id
-        ).orNull()!!
+        ).map { account ->
+            system.accountService.getActivationLinkByAccountId(
+                account.id
+            ).map { activationLink ->
 
-        //when
-        val actionResult = system.accountService.useActivationLink(
-            activationLink.activationKey
-        )
+                //when
+                system.accountService.useActivationLink(
+                    activationLink.activationKey
 
-        //then
-        assertAll(
-            { assertThat(actionResult.result).isEqualTo(ActivationResult.ACCOUNT_ACTIVATED) },
-            {
-                val resultAccount = system.accountService.getAccountByNationalIdNumber(
-                    createCourseCommand.nationalIdNumber
-                ).orNull()!!
-                assertThat(resultAccount.isActive).isTrue
-            },
-            {
-                val resultActivationLink = system.accountService.getActivationLinkByAccountId(
-                    account.id
-                ).orNull()!!
-                assertThat(resultActivationLink.isConsumed).isTrue
+                    //then
+                ).map { uuid ->
+                    assertAll(
+                        { assertThat(uuid).isEqualTo(account.id) },
+                        {
+                            system.accountService.getAccountByNationalIdNumber(
+                                createCourseCommand.nationalIdNumber
+                            ).map { modifiedAccount ->
+                                assertThat(modifiedAccount.isActive).isTrue
+                            }
+                        },
+                        {
+                            system.accountService.getActivationLinkByAccountId(
+                                account.id
+                            ).map { resultActivationLink ->
+                                assertThat(resultActivationLink.isConsumed).isTrue
+                            }
+                        }
+                    )
+                }
             }
-        )
+        }
     }
 
     @Test
@@ -74,9 +77,10 @@ class ActivationLinkTests: BaseTestSystem() {
         val createCourseCommand = courseCommand()
         system.courseService.createCourse(createCourseCommand)
 
-        val account = system.accountService.getAccountByNationalIdNumber(
+        val accountByNationalIdNumber = system.accountService.getAccountByNationalIdNumber(
             createCourseCommand.nationalIdNumber
-        ).orNull()!!
+        )
+        val account = accountByNationalIdNumber.orNull()!!
         val activationLink = system.accountService.getActivationLinkByAccountId(
             account.id
         ).orNull()!!
@@ -85,7 +89,10 @@ class ActivationLinkTests: BaseTestSystem() {
         val actionResult = system.accountService.useActivationLink(activationLink.activationKey)
 
         //then
-        assertThat(actionResult.result).isEqualTo(ActivationResult.LINK_ALREADY_USED)
+        actionResult.fold(
+            { error -> assertThat(error).isInstanceOf(AccountAlreadyActivated::class.java) },
+            {}
+        )
     }
 
     @Test
@@ -97,6 +104,9 @@ class ActivationLinkTests: BaseTestSystem() {
         val actionResult = system.accountService.useActivationLink(nonExistingActivationKey)
 
         //then
-        assertThat(actionResult.result).isEqualTo(ActivationResult.NOT_FOUND)
+        actionResult.fold(
+            { error -> assertThat(error).isEqualTo(ActivationLinkDoesNotExist) },
+            {}
+        )
     }
 }

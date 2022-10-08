@@ -1,5 +1,5 @@
 package com.kucharek.drivingschoolbackend.event
 
-interface DomainEvent {
-    val eventMetaData: EventMetaData
+interface DomainEvent<AggregateId> {
+    val metaData: EventMetaData<AggregateId>
 }

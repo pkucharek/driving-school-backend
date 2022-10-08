@@ -1,17 +1,19 @@
 package com.kucharek.drivingschoolbackend.account
 
-import com.kucharek.drivingschoolbackend.account.activation.ActivationKey
-import com.kucharek.drivingschoolbackend.account.activation.ActivationLinkReadModel
-import com.kucharek.drivingschoolbackend.account.activation.ActivationLinkService
-import com.kucharek.drivingschoolbackend.account.activation.ActivationResultDto
+import arrow.core.Either
+import arrow.core.flatMap
+import com.kucharek.drivingschoolbackend.account.activation.*
+import com.kucharek.drivingschoolbackend.account.activation.readmodel.ActivationLinkReadModel
 import com.kucharek.drivingschoolbackend.account.port.EmailSenderPort
 import com.kucharek.drivingschoolbackend.account.readmodel.AccountQueryRepository
 import com.kucharek.drivingschoolbackend.account.readmodel.AccountReadModel
+import com.kucharek.drivingschoolbackend.event.DomainCommandError
 import com.kucharek.drivingschoolbackend.event.EventStore
+import java.time.Instant
 import java.util.*
 
 class AccountService(
-    private val eventStore: EventStore<Account, AccountEvent>,
+    private val eventStore: EventStore<AccountId, AccountEvent>,
     private val accountQueryRepository: AccountQueryRepository,
     private val emailSenderPort: EmailSenderPort,
     private val activationLinkService: ActivationLinkService,
@@ -20,73 +22,74 @@ class AccountService(
         firstName: String,
         lastName: String,
         nationalIdNumber: String,
-        email: String
-    ) : AccountCreationResultDto {
-        val findByNationalIDNumber =
-            accountQueryRepository.findByNationalIDNumber(nationalIdNumber)
-        if (findByNationalIDNumber.isDefined())
-            return AccountCreationResultDto.alreadyExistsByNationalIDNumber(
-                nationalIdNumber
-            )
+        email: String,
+    ): Either<DomainCommandError, Account> =
+        // TODO replace with map, flatMap
+        accountQueryRepository.findByNationalIDNumber(nationalIdNumber).fold(
+            {
+                accountQueryRepository.findByEmail(email).fold(
+                    {
+                        Either.Right(Account().apply {
+                            handle(CreateAccount(
+                                firstName = firstName,
+                                lastName = lastName,
+                                nationalIdNumber = nationalIdNumber,
+                                email = email
+                            )).map { event ->
+                                applyEvent(event)
+                                eventStore.saveEvent(event)
+                                val createdAccountId = event.metaData.aggregateID
+                                accountQueryRepository.createReadModel(
+                                    id = createdAccountId,
+                                    firstName = firstName,
+                                    lastName = lastName,
+                                    nationalIdNumber = nationalIdNumber,
+                                    email = email,
+                                    isActive = false
+                                )
+                                emailSenderPort.sendActivationEmail(
+                                    email,
+                                    firstName,
+                                    activationLinkService.generate(createdAccountId)
+                                )
+                                Either.Right(this)
+                            }
+                        })
+                    },
+                    { Either.Left(AccountAlreadyExists) }
+                )
+            },
+            { Either.Left(AccountAlreadyExists) }
+        )
 
-        val findByEmail = accountQueryRepository.findByEmail(email)
-        if (findByEmail.isDefined()) {
-            return AccountCreationResultDto.alreadyExistsByEmail(
-                email
-            )
-        }
+    fun getAccountByNationalIdNumber(nationalIdNumber: String) =
+        getAccountBy { it.nationalIdNumber == nationalIdNumber }
 
-        return createInternalAccount(
-            firstName, lastName, nationalIdNumber, email
-        ).let {
-            accountQueryRepository.createReadModel(
-                it.accountId!!, firstName, lastName, nationalIdNumber, email, isActive = false
-            )
-            emailSenderPort.sendActivationEmail(
-                email,
-                firstName,
-                activationLinkService.generate(it.accountId)
-            )
-            it
-        }
-    }
+    fun getAccountBy(predicate: (AccountReadModel) -> Boolean) =
+        accountQueryRepository.findByPredicate(predicate)
 
-    fun createInternalAccount(
-        firstName: String,
-        lastName: String,
-        nationalIdNumber: String,
-        email: String
-    ): AccountCreationResultDto {
-        val createdAccount =
-            Account.create(firstName, lastName, nationalIdNumber, email)
-        eventStore.saveEvents(createdAccount.domainEvents)
-        return AccountCreationResultDto.created(createdAccount.id)
-    }
+    fun getActivationLinkByAccountId(accountId: AccountId) =
+        getActivationLinkBy { it.accountId == accountId }
 
-    fun getAccountByNationalIdNumber(nationalIdNumber: String)
-        = getAccountBy { it.nationalIdNumber == nationalIdNumber }
+    fun getActivationLinkBy(predicate: (ActivationLinkReadModel) -> Boolean) =
+        activationLinkService.getBy(predicate)
 
-    fun getAccountBy(predicate: (AccountReadModel) -> Boolean)
-        = accountQueryRepository.findByPredicate {
-            predicate(it)
-        }
-
-    fun getActivationLinkByAccountId(accountId: UUID)
-        = getActivationLinkBy { it.accountId == accountId }
-
-    fun getActivationLinkBy(predicate: (ActivationLinkReadModel) -> Boolean)
-        = activationLinkService.getBy(predicate)
-
-    fun useActivationLink(activationKey: ActivationKey): ActivationResultDto {
-        val activationLink = getActivationLinkBy { it.activationKey == activationKey }
-        if (activationLink.isEmpty()) return ActivationResultDto.notFound()
-
-        activationLink.map {
-            if (it.isConsumed) return ActivationResultDto.alreadyUsed()
-
-            return getAccountBy { account -> account.id == it.accountId }.map { account ->
-                eventStore.
+    fun useActivationLink(activationKey: ActivationKey): Either<DomainCommandError, AccountId> =
+        getActivationLinkBy { it.activationKey == activationKey }.flatMap { activationLink ->
+            if (activationLink.isConsumed) {
+                return Either.Left(ActivationLinkAlreadyConsumed)
+            } else {
+                eventStore.loadEvents(activationLink.accountId).map { list ->
+                    list.fold(Account()) { acc, accountEvent ->
+                        acc.applyEvent(accountEvent)
+                    }
+                }.flatMap { account ->
+                    account.handle(ActivateAccount(Instant.now())).map { event ->
+                        eventStore.saveEvent(event)
+                        accountQueryRepository.accountActivated(event.metaData.aggregateID)
+                        return Either.Right(event.metaData.aggregateID)
+                    }
+                }
             }
         }
-    }
 }

@@ -1,38 +1,43 @@
 package com.kucharek.drivingschoolbackend.course
 
-import com.kucharek.drivingschoolbackend.account.AccountCreationResult
+import arrow.core.Either
 import com.kucharek.drivingschoolbackend.account.AccountService
 import com.kucharek.drivingschoolbackend.course.readmodel.CourseQueryRepository
+import com.kucharek.drivingschoolbackend.course.web.CreateNewCourseDto
+import com.kucharek.drivingschoolbackend.event.DomainCommandError
+import com.kucharek.drivingschoolbackend.event.EventStore
+import java.util.*
 
 class CourseService(
     private val accountService: AccountService,
-    private val courseCommandResolver: CourseCommandResolver,
+    private val eventStore: EventStore<CourseId, CourseEvent>,
     private val courseQueryRepository: CourseQueryRepository,
 ) {
     fun createCourse(createNewCourse: CreateNewCourseDto)
-        : CourseCreationResultDto
+        : Either<DomainCommandError, CourseId>
     {
-        val createAccountResult = accountService.createAccount(
-            createNewCourse.firstName,
-            createNewCourse.lastName,
-            createNewCourse.nationalIdNumber,
-            createNewCourse.email
+        //TODO replace with flatMap
+        return accountService.createAccount(
+            firstName = createNewCourse.firstName,
+            lastName = createNewCourse.lastName,
+            nationalIdNumber = createNewCourse.nationalIdNumber,
+            email = createNewCourse.email
+        ).fold(
+            { error -> Either.Left(error) },
+            { account ->
+                Either.Right(Course().apply {
+                    handle(CreateCourse(account.id, createNewCourse.courseCategory)).map { event ->
+                        applyEvent(event)
+                        eventStore.saveEvent(event)
+                        courseQueryRepository.createReadModel(
+                            id = id,
+                            accountId = account.id,
+                            courseCategory = createNewCourse.courseCategory
+                        )
+                        this
+                    }
+                }.id)
+            }
         )
-        if (createAccountResult.result == AccountCreationResult.NOT_CREATED) {
-            return CourseCreationResultDto.notCreated(
-                createAccountResult.message
-            )
-        }
-        return courseCommandResolver.createCourse(
-            createAccountResult.accountId!!,
-            createNewCourse.courseCategory
-        ).let {
-            courseQueryRepository.createReadModel(
-                createAccountResult.accountId,
-                it.id!!,
-                createNewCourse.courseCategory
-            )
-            it
-        }
     }
 }
