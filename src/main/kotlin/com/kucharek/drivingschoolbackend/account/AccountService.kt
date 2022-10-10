@@ -39,6 +39,8 @@ class AccountService(
                                 applyEvent(event)
                                 eventStore.saveEvent(event)
                                 val createdAccountId = event.metaData.aggregateID
+
+                                // TODO replace with asynchronous read model update
                                 accountQueryRepository.createReadModel(
                                     id = createdAccountId,
                                     firstName = firstName,

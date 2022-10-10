@@ -26,6 +26,8 @@ class ActivationLinkService(
                 activationKey = ActivationKey(activationKey)
             )).map { event ->
                 eventStore.saveEvent(event)
+
+                // TODO replace with asynchronous read model update
                 activationLinkQueryRepository.createReadModel(
                     id = event.metaData.aggregateID,
                     expirationDate = Instant.now().plus(Period.ofDays(1)),

@@ -29,6 +29,8 @@ class CourseService(
                     handle(CreateCourse(account.id, createNewCourse.courseCategory)).map { event ->
                         applyEvent(event)
                         eventStore.saveEvent(event)
+
+                        // TODO replace with asynchronous read model update
                         courseQueryRepository.createReadModel(
                             id = id,
                             accountId = account.id,
