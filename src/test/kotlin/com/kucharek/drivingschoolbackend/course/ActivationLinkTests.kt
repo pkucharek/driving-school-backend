@@ -55,6 +55,7 @@ class ActivationLinkTests : BaseTestSystem() {
                             system.accountService.getAccountByNationalIdNumber(
                                 createCourseCommand.nationalIdNumber
                             ).map { modifiedAccount ->
+                                println("Modified account = $modifiedAccount")
                                 assertThat(modifiedAccount.isActive).isTrue
                             }
                         },
@@ -89,10 +90,9 @@ class ActivationLinkTests : BaseTestSystem() {
         val actionResult = system.accountService.useActivationLink(activationLink.activationKey)
 
         //then
-        actionResult.fold(
-            { error -> assertThat(error).isInstanceOf(AccountAlreadyActivated::class.java) },
-            {}
-        )
+        actionResult.mapLeft { error ->
+            assertThat(error).isInstanceOf(AccountAlreadyActivated::class.java)
+        }
     }
 
     @Test
@@ -104,9 +104,8 @@ class ActivationLinkTests : BaseTestSystem() {
         val actionResult = system.accountService.useActivationLink(nonExistingActivationKey)
 
         //then
-        actionResult.fold(
-            { error -> assertThat(error).isEqualTo(ActivationLinkDoesNotExist) },
-            {}
-        )
+        actionResult.mapLeft { error ->
+            assertThat(error).isEqualTo(ActivationLinkDoesNotExist)
+        }
     }
 }

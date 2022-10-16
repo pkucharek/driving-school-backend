@@ -18,4 +18,5 @@ data class AccountCreated(
 data class AccountActivated(
     override val metaData: EventMetaData<AccountId>,
     val activationTimestamp: Instant,
+    val isActive: Boolean = true
 ): AccountEvent()

@@ -15,7 +15,12 @@ data class ActivationKey(
 
 data class ActivationLinkId(val uuid: UUID)
 
-class ActivationLink : Aggregate<ActivationLinkId, ActivationLinkCommand, ActivationLinkError, ActivationLinkEvent>() {
+class ActivationLink : Aggregate<
+    ActivationLinkId,
+    ActivationLinkCommand,
+    ActivationLinkError,
+    ActivationLinkEvent
+>() {
     lateinit var id: ActivationLinkId
         private set
     private lateinit var userId: AccountId
@@ -26,6 +31,7 @@ class ActivationLink : Aggregate<ActivationLinkId, ActivationLinkCommand, Activa
     override fun applyEvent(event: ActivationLinkEvent): ActivationLink {
         return when (event) {
             is ActivationLinkCreated -> applyActivationLinkCreated(event)
+            is ActivationLinkConsumed -> applyActivationLinkConsumed(event)
         }
     }
 
@@ -38,9 +44,15 @@ class ActivationLink : Aggregate<ActivationLinkId, ActivationLinkCommand, Activa
         return this
     }
 
+    private fun applyActivationLinkConsumed(event: ActivationLinkConsumed): ActivationLink {
+        isConsumed = event.isConsumed
+        return this
+    }
+
     override fun handle(command: ActivationLinkCommand): Either<ActivationLinkError, ActivationLinkEvent> {
         return when (command) {
             is CreateActivationLink -> handleCreateActivationLink(command)
+            is ConsumeActivationLink -> handleConsumeActivationLink(command)
         }
     }
 
@@ -51,6 +63,14 @@ class ActivationLink : Aggregate<ActivationLinkId, ActivationLinkCommand, Activa
             expirationDate = command.expirationDate,
             activationKey = command.activationKey,
             isConsumed = false
+        ))
+    }
+
+    private fun handleConsumeActivationLink(command: ConsumeActivationLink): Either<ActivationLinkError, ActivationLinkEvent> {
+
+        return Either.Right(ActivationLinkConsumed(
+            metaData = EventMetaData(aggregateID = id),
+            isConsumed = command.isConsumed
         ))
     }
 }

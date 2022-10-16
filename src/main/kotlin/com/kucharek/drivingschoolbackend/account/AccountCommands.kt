@@ -13,5 +13,6 @@ data class CreateAccount(
 ): AccountCommand()
 
 data class ActivateAccount(
-    val activationTimestamp: Instant
+    val activationTimestamp: Instant,
+    val isActive: Boolean = true
 ): AccountCommand()

@@ -18,4 +18,6 @@ interface ActivationLinkQueryRepository {
         accountId: AccountId,
         isConsumed: Boolean
     )
+
+    fun activationLinkConsumed(id: ActivationLinkId)
 }

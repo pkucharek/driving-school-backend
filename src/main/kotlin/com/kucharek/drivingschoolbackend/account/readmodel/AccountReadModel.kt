@@ -2,7 +2,7 @@ package com.kucharek.drivingschoolbackend.account.readmodel
 
 import com.kucharek.drivingschoolbackend.account.AccountId
 
-class AccountReadModel(
+data class AccountReadModel(
     val id: AccountId,
     val firstName: String,
     val lastName: String,

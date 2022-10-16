@@ -1,14 +1,9 @@
 package com.kucharek.drivingschoolbackend.account.readmodel
 
 import arrow.core.Either
-import arrow.core.None
-import arrow.core.Option
-import arrow.core.Some
-import com.kucharek.drivingschoolbackend.account.AccountError
 import com.kucharek.drivingschoolbackend.account.AccountId
 import com.kucharek.drivingschoolbackend.event.AggregateDoesNotExist
 import com.kucharek.drivingschoolbackend.event.DomainCommandError
-import java.util.UUID
 
 class AccountQueryInMemoryRepository : AccountQueryRepository {
     private var records: Map<AccountId, AccountReadModel> = mapOf()
@@ -41,6 +36,6 @@ class AccountQueryInMemoryRepository : AccountQueryRepository {
     }
 
     override fun accountActivated(id: AccountId) {
-        records = records + Pair(id, records[id]!!)
+        records = records + Pair(id, records[id]!!.copy(isActive = true))
     }
 }

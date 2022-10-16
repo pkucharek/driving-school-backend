@@ -36,4 +36,8 @@ class ActivationLinkQueryInMemoryRepository : ActivationLinkQueryRepository {
 
         return Either.Right(foundRecord.iterator().next().value)
     }
+
+    override fun activationLinkConsumed(id: ActivationLinkId) {
+        records = records + Pair(id, records[id]!!.copy(isConsumed = true))
+    }
 }

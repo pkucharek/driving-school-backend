@@ -76,16 +76,17 @@ class AccountService(
     fun getActivationLinkBy(predicate: (ActivationLinkReadModel) -> Boolean) =
         activationLinkService.getBy(predicate)
 
+    private fun getAggregate(id: AccountId)
+        = eventStore.loadEvents(id).map { list ->
+            list.fold(Account()) { acc, accountEvent ->
+                acc.applyEvent(accountEvent)
+            }
+        }
+
     fun useActivationLink(activationKey: ActivationKey): Either<DomainCommandError, AccountId> =
         getActivationLinkBy { it.activationKey == activationKey }.flatMap { activationLink ->
-            if (activationLink.isConsumed) {
-                return Either.Left(ActivationLinkAlreadyConsumed)
-            } else {
-                eventStore.loadEvents(activationLink.accountId).map { list ->
-                    list.fold(Account()) { acc, accountEvent ->
-                        acc.applyEvent(accountEvent)
-                    }
-                }.flatMap { account ->
+            activationLinkService.consumeLink(activationLink.id).flatMap {
+                getAggregate(activationLink.accountId).flatMap { account ->
                     account.handle(ActivateAccount(Instant.now())).map { event ->
                         eventStore.saveEvent(event)
                         accountQueryRepository.accountActivated(event.metaData.aggregateID)

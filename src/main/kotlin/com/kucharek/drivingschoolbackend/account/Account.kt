@@ -8,7 +8,12 @@ import kotlin.properties.Delegates
 
 data class AccountId(val uuid: UUID)
 
-class Account : Aggregate<AccountId, AccountCommand, AccountError, AccountEvent>() {
+class Account : Aggregate<
+    AccountId,
+    AccountCommand,
+    AccountError,
+    AccountEvent
+>() {
     lateinit var id: AccountId
         private set
     private lateinit var firstName: String
@@ -35,7 +40,7 @@ class Account : Aggregate<AccountId, AccountCommand, AccountError, AccountEvent>
     }
 
     private fun applyAccountActivated(event: AccountActivated): Account {
-        isActive = true
+        isActive = event.isActive
         return this
     }
 
@@ -62,7 +67,8 @@ class Account : Aggregate<AccountId, AccountCommand, AccountError, AccountEvent>
         }
         return Either.Right(AccountActivated(
             metaData = EventMetaData(aggregateID = id),
-            command.activationTimestamp
+            command.activationTimestamp,
+            command.isActive
         ))
     }
 }

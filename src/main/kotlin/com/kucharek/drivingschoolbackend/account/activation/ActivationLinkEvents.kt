@@ -15,3 +15,8 @@ data class ActivationLinkCreated(
     val activationKey: ActivationKey,
     val isConsumed: Boolean
 ) : ActivationLinkEvent()
+
+data class ActivationLinkConsumed(
+    override val metaData: EventMetaData<ActivationLinkId>,
+    val isConsumed: Boolean = true
+) : ActivationLinkEvent()
