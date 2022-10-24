@@ -8,3 +8,5 @@ sealed class AccountError(
 
 object AccountAlreadyExists : AccountError("Account already exists")
 object AccountAlreadyActivated : AccountError("Account was already activated")
+
+object AccountDoesNotExist

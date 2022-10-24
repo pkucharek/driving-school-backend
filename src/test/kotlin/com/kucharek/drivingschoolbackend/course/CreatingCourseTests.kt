@@ -2,13 +2,14 @@ package com.kucharek.drivingschoolbackend.course
 
 import com.kucharek.drivingschoolbackend.BaseTestSystem
 import com.kucharek.drivingschoolbackend.account.AccountAlreadyExists
+import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class CreatingCourseTests: BaseTestSystem() {
 
     @Test
-    fun `creates course`() {
+    fun `creates course`() = runTest {
         //given
         val createCourseCommand = courseCommand()
 
@@ -22,7 +23,7 @@ class CreatingCourseTests: BaseTestSystem() {
     }
 
     @Test
-    fun `creates account after creating course`() {
+    fun `creates account after creating course`() = runTest {
         //given
         val createCourseCommand = courseCommand()
 
@@ -37,7 +38,7 @@ class CreatingCourseTests: BaseTestSystem() {
     }
 
     @Test
-    fun `does not create course when account with nationalIdNumber already exists`() {
+    fun `does not create course when account with nationalIdNumber already exists`() = runTest {
         //given
         val createCourseCommand = courseCommand()
         system.courseService.createCourse(createCourseCommand)
@@ -48,12 +49,12 @@ class CreatingCourseTests: BaseTestSystem() {
         //then
         createCourseResult.fold(
             { error -> assertThat(error).isInstanceOf(AccountAlreadyExists::class.java) },
-            {}
+            { throw Exception() }
         )
     }
 
     @Test
-    fun `does not create course when account with email already exists`() {
+    fun `does not create course when account with email already exists`() = runTest {
         //given
         val previousCreateCourseCommand = courseCommand()
         system.courseService.createCourse(previousCreateCourseCommand)

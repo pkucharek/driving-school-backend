@@ -4,6 +4,7 @@ import com.kucharek.drivingschoolbackend.BaseTestSystem
 import com.kucharek.drivingschoolbackend.account.AccountAlreadyActivated
 import com.kucharek.drivingschoolbackend.account.activation.ActivationKey
 import com.kucharek.drivingschoolbackend.account.activation.ActivationLinkDoesNotExist
+import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
@@ -11,7 +12,7 @@ import org.junit.jupiter.api.assertAll
 class ActivationLinkTests : BaseTestSystem() {
 
     @Test
-    fun `creates not consumed activation link after account is created`() {
+    fun `creates not consumed activation link after account is created`() = runTest {
         //given
         val createCourseCommand = courseCommand()
 
@@ -31,7 +32,7 @@ class ActivationLinkTests : BaseTestSystem() {
     }
 
     @Test
-    fun `account is activated and activation link is consumed after activation link is used`() {
+    fun `account is activated and activation link is consumed after activation link is used`() = runTest {
         //given
         val createCourseCommand = courseCommand()
         system.courseService.createCourse(createCourseCommand)
@@ -55,7 +56,6 @@ class ActivationLinkTests : BaseTestSystem() {
                             system.accountService.getAccountByNationalIdNumber(
                                 createCourseCommand.nationalIdNumber
                             ).map { modifiedAccount ->
-                                println("Modified account = $modifiedAccount")
                                 assertThat(modifiedAccount.isActive).isTrue
                             }
                         },
@@ -73,7 +73,7 @@ class ActivationLinkTests : BaseTestSystem() {
     }
 
     @Test
-    fun `consumed activation link cannot be consumed again`() {
+    fun `consumed activation link cannot be consumed again`() = runTest {
         //given
         val createCourseCommand = courseCommand()
         system.courseService.createCourse(createCourseCommand)
@@ -96,7 +96,7 @@ class ActivationLinkTests : BaseTestSystem() {
     }
 
     @Test
-    fun `not existing activationKey cannot be used`() {
+    fun `not existing activationKey cannot be used`() = runTest {
         //given
         val nonExistingActivationKey = ActivationKey("123")
 

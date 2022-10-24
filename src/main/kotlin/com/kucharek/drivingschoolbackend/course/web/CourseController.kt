@@ -14,7 +14,7 @@ class CourseController(
     private val courseService: CourseService,
 ) {
     @PostMapping
-    fun createCourse(
+    suspend fun createCourse(
         @RequestBody createNewCourse: CreateNewCourseDto
     ): ResponseEntity<Any>
     {

@@ -1,6 +1,8 @@
 package com.kucharek.drivingschoolbackend.account.readmodel
 
 import arrow.core.Either
+import com.kucharek.drivingschoolbackend.account.AccountAlreadyExists
+import com.kucharek.drivingschoolbackend.account.AccountDoesNotExist
 import com.kucharek.drivingschoolbackend.account.AccountId
 import com.kucharek.drivingschoolbackend.event.AggregateDoesNotExist
 import com.kucharek.drivingschoolbackend.event.DomainCommandError
@@ -8,11 +10,17 @@ import com.kucharek.drivingschoolbackend.event.DomainCommandError
 class AccountQueryInMemoryRepository : AccountQueryRepository {
     private var records: Map<AccountId, AccountReadModel> = mapOf()
 
-    override fun findByNationalIDNumber(nationalIdNumber: String) =
-        findByPredicate { it.nationalIdNumber == nationalIdNumber }
+    override fun notExistByNationalIDNumber(nationalIdNumber: String) =
+        findByPredicate { it.nationalIdNumber == nationalIdNumber }.fold(
+            { Either.Right(AccountDoesNotExist) },
+            { Either.Left(AccountAlreadyExists) }
+        )
 
-    override fun findByEmail(email: String) =
-        findByPredicate { it.email == email }
+    override fun notExistByEmail(email: String) =
+        findByPredicate { it.email == email }.fold(
+            { Either.Right(AccountDoesNotExist) },
+            { Either.Left(AccountAlreadyExists) }
+        )
 
     override fun createReadModel(
         id: AccountId,
